@@ -121,7 +121,7 @@ public record SignText(Text[] lines, String font, BakedBlockEntities.Region regi
 
         private float glyph(char character, boolean italic, float x, float y, int color) {
             if (character == ' ') return 4.0F;
-            int index = TextBatcher.CHARACTERS.indexOf(character);
+            int index = TextBatcher.characterIndex(character);
             if (index != -1 && !this.unicode) {
                 float width = this.batcher.getCharWidth(index);
                 float right = width - 0.01F - 1.0F;

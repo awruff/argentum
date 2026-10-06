@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -46,6 +47,8 @@ public final class TextBatcher {
 
     // this got proguarded out in vanilla so we have to duplicate it
     public static final String CHARACTERS = "ÀÁÂÈÊËÍÓÔÕÚßãõğİıŒœŞşŴŵžȇ\u0000\u0000\u0000\u0000\u0000\u0000\u0000 !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u0000ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜø£Ø×ƒáíóúñÑªº¿®¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αβΓπΣσμτΦΘΩδ∞∅∈∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■\u0000";
+    private static final short[] CHARACTER_INDICES = characterIndices();
+    private static final byte[] FORMATTING_INDICES = formattingIndices();
 
     private final BufferBuilder buffer = new BufferBuilder(64 * 1024 / Integer.BYTES);
     private final BufferBuilder decorationBuffer = new BufferBuilder(4 * 1024 / Integer.BYTES);
@@ -153,6 +156,37 @@ public final class TextBatcher {
         this.invalidateGeometry();
     }
 
+    private static short[] characterIndices() {
+        int size = 0;
+        for (int i = 0; i < CHARACTERS.length(); i++) {
+            size = Math.max(size, CHARACTERS.charAt(i) + 1);
+        }
+
+        short[] indices = new short[size];
+        Arrays.fill(indices, (short)-1);
+        for (int i = CHARACTERS.length() - 1; i >= 0; i--) {
+            indices[CHARACTERS.charAt(i)] = (short)i;
+        }
+        return indices;
+    }
+
+    public static int characterIndex(int character) {
+        return character < CHARACTER_INDICES.length ? CHARACTER_INDICES[character] : -1;
+    }
+
+    private static byte[] formattingIndices() {
+        byte[] indices = new byte[128];
+        for (int i = 0; i < indices.length; i++) {
+            indices[i] = (byte)FORMATTING.indexOf(Character.toLowerCase(i));
+        }
+        return indices;
+    }
+
+    public static int formattingIndex(int character) {
+        return character < FORMATTING_INDICES.length ? FORMATTING_INDICES[character]
+                : FORMATTING.indexOf(Character.toLowerCase(character));
+    }
+
     /** Characters vanilla has no glyph for but which should both render and measure as a space */
     public static char normalizeSpace(char character) {
         return character == '\u202f' || character == '\u00a0' || character == '\u2007' ? ' ' : character;
@@ -161,7 +195,7 @@ public final class TextBatcher {
     public float charWidth(char character, boolean unicode, byte[] glyphSizes) {
         if (character == SECTION) return -1.0F;
 
-        int index = CHARACTERS.indexOf(character);
+        int index = characterIndex(character);
         if ((character > 0 && index != -1 && !unicode) || character == ' ') return this.widths[index];
 
         if (glyphSizes[character] == 0) return 0.0F;
@@ -513,9 +547,9 @@ public final class TextBatcher {
 
         for (int i = 0; i < text.length(); i++) {
             if (text.charAt(i) == SECTION && i + 1 < text.length()) {
-                char formatting = Character.toLowerCase(text.charAt(++i));
+                int code = formattingIndex(text.charAt(++i));
                 // obfuscated text changes every frame
-                if (formatting == 'k' || FORMATTING.indexOf(formatting) == -1) return false;
+                if (code == 16 || code == -1) return false;
             }
         }
         return true;
@@ -523,7 +557,7 @@ public final class TextBatcher {
 
     public static boolean hasCustomFormatting(String text) {
         for (int i = text.indexOf(SECTION); i != -1 && i + 1 < text.length(); i = text.indexOf(SECTION, i + 2)) {
-            if (FORMATTING.indexOf(Character.toLowerCase(text.charAt(i + 1))) == -1) return true;
+            if (formattingIndex(text.charAt(i + 1)) == -1) return true;
         }
         return false;
     }

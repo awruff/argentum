@@ -22,6 +22,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import dev.rdh.argentum.impl.ext.TextRendererExtension;
 import dev.rdh.argentum.impl.render.gui.TextBatcher;
 
+import java.util.Locale;
+
 @Mixin(TextRenderer.class)
 public abstract class TextRendererMixin implements TextRendererExtension {
     @Shadow
@@ -154,6 +156,35 @@ public abstract class TextRendererMixin implements TextRendererExtension {
         this.strikethrough = (style & TextBatcher.STRIKETHROUGH) != 0;
         this.underlined = (style & TextBatcher.UNDERLINED) != 0;
         this.italic = (style & TextBatcher.ITALIC) != 0;
+    }
+
+    @WrapOperation(
+            method = "drawLayer(Ljava/lang/String;Z)V",
+            at = @At(value = "INVOKE", target = "Ljava/lang/String;toLowerCase(Ljava/util/Locale;)Ljava/lang/String;")
+    )
+    private String argentum$keepCase(String text, Locale locale, Operation<String> original) {
+        return text;
+    }
+
+    @WrapOperation(
+            method = "drawLayer(Ljava/lang/String;Z)V",
+            at = @At(value = "INVOKE", target = "Ljava/lang/String;indexOf(I)I", ordinal = 0)
+    )
+    private int argentum$formattingIndex(String codes, int character, Operation<Integer> original) {
+        return TextBatcher.formattingIndex(character);
+    }
+
+    @WrapOperation(
+            method = "drawLayer(Ljava/lang/String;Z)V",
+            at = @At(value = "INVOKE", target = "Ljava/lang/String;indexOf(I)I", ordinal = 1)
+    )
+    private int argentum$layerGlyphIndex(String characters, int character, Operation<Integer> original) {
+        return TextBatcher.characterIndex(character);
+    }
+
+    @WrapOperation(method = "drawGlyph", at = @At(value = "INVOKE", target = "Ljava/lang/String;indexOf(I)I"))
+    private int argentum$glyphIndex(String characters, int character, Operation<Integer> original) {
+        return TextBatcher.characterIndex(character);
     }
 
     @Inject(method = "drawBasicGlyph", at = @At("HEAD"), cancellable = true)
